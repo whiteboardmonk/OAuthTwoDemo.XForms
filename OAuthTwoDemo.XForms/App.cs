@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using Xamarin.Forms;
+using Newtonsoft.Json;
 
 namespace OAuthTwoDemo.XForms
 {
@@ -36,6 +39,7 @@ namespace OAuthTwoDemo.XForms
 		}
 
 		public OAuthSettings OAuthSettings { get; private set; }
+        public User User;
 
 		NavigationPage _NavPage;
 
@@ -57,10 +61,10 @@ namespace OAuthTwoDemo.XForms
 			get { return _Token; }
 		}
 
-		public void SaveToken(string token)
+		public async void SaveToken(string token)
 		{
 			_Token = token;
-
+            GetUserInfo();
 			// broadcast a message that authentication was successful
 			MessagingCenter.Send<App> (this, "Authenticated");
 		}
@@ -68,9 +72,48 @@ namespace OAuthTwoDemo.XForms
 		public Action SuccessfulLoginAction
 		{
 			get {
-				return new Action (() => _NavPage.Navigation.PopModalAsync ());
+
+                return new Action(() => {
+                    _NavPage.Navigation.PopModalAsync();
+                });
 			}
 		}
+        public async void GetUserInfo()
+        {
+            var client = new HttpClient();
+            var access_token = _Instance.Token;
+            var apiUrl = "https://graph.facebook.com/v2.4/me?fields=id,name,posts{message},about,bio&access_token=" + access_token;
+            var getUserDetailsTask = await client.GetAsync(apiUrl);
+            if (getUserDetailsTask.IsSuccessStatusCode)
+            {
+                var responseJsonString = await getUserDetailsTask.Content.ReadAsStringAsync();
+                var jsonData = JsonConvert.DeserializeObject<User>(responseJsonString);
+                _Instance.User = jsonData;
+
+                //Make api call to xLabsApi - Watson interface to fetch user's personality insights
+                var values = new List<KeyValuePair<string, string>>();
+                values.Add(new KeyValuePair<string, string>("text", @"Call me Ishmael. Some years ago-never mind how long precisely-having little or no money in my purse,
+and nothing particular to interest me on shore, I thought I would sail about a little and see the watery
+part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever
+I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever
+I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral
+I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral Call me Ishmael. Some years ago-never mind how long precisely-having little or no money in my purse,
+and nothing particular to interest me on shore, I thought I would sail about a little and see the watery
+part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever
+I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever
+I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral
+I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral"));
+                var content = new FormUrlEncodedContent(values);
+                var client2 = new HttpClient();
+                var response = await client2.PostAsync("http://xlab.mybluemix.net/map", content).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonOut = await response.Content.ReadAsStringAsync();
+                    var y = JsonConvert.DeserializeObject(jsonOut);
+                    _Instance.User.personality = y.ToString();
+                }
+            }
+        }
 	}
 }
 
