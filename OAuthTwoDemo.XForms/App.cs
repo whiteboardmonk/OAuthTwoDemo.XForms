@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using Xamarin.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace OAuthTwoDemo.XForms
 {
@@ -21,6 +22,7 @@ namespace OAuthTwoDemo.XForms
 					{
 						if (_Instance == null) {
 							_Instance = new App ();
+                            _Instance.BulkMatchList = SetupUsers();
 							_Instance.OAuthSettings = 
 								new OAuthSettings (
 									clientId: "1639469262962972",  		// your OAuth2 client id 
@@ -37,11 +39,22 @@ namespace OAuthTwoDemo.XForms
 				return _Instance;
 			}
 		}
+        public static List<AppUser> SetupUsers()
+        {
+            var x = new List<AppUser>();
+            x.Add(new AppUser() { name = "Steve Jobs", description = "yo", profileIcon = "Assets/john.jpg" });
+            x.Add(new AppUser() { name = "Marilyn Monroe", description = "yo", profileIcon = "" });
+            x.Add(new AppUser() { name = "Hitler", description = "yo", profileIcon = "" });
+            x.Add(new AppUser() { name = "Narendra Modi", description = "yo", profileIcon = "" });
+            x.Add(new AppUser() { name = "Barack Obama", description = "yo", profileIcon = "" });
+            x.Add(new AppUser() { name = "Michelle Obama", description = "yo", profileIcon = "" });
+            return x;
+        }
 
 		public OAuthSettings OAuthSettings { get; private set; }
         public User User;
-
-		NavigationPage _NavPage;
+        public List<AppUser> BulkMatchList;        
+		public NavigationPage _NavPage;
 
 		public Page GetMainPage ()
 		{
@@ -78,6 +91,13 @@ namespace OAuthTwoDemo.XForms
                 });
 			}
 		}
+        public Action RedirectToReviews(ContentPage page)
+        {
+            return new Action(() =>
+            {
+                _NavPage.Navigation.PushAsync(page);
+            });
+        }
         public async void GetUserInfo()
         {
             var client = new HttpClient();
@@ -111,6 +131,30 @@ I meet; and especially whenever my hypos get such an upper hand of me, that it r
                     var jsonOut = await response.Content.ReadAsStringAsync();
                     var y = JsonConvert.DeserializeObject(jsonOut);
                     _Instance.User.personality = y.ToString();
+
+                    var client3 = new HttpClient();
+                    var matchResponse = await client3.PostAsync("http://xlab.mybluemix.net/bulk_match", content).ConfigureAwait(false);
+                    if (matchResponse.IsSuccessStatusCode)
+                    {
+                        var matchDataString = await matchResponse.Content.ReadAsStringAsync();
+                        JArray matchDataJson = (JArray)JsonConvert.DeserializeObject(matchDataString);
+                        for (int i = 0; i < matchDataJson.Count; i++)
+			            {
+                            BulkMatchList[i].matchData = JObject.FromObject(matchDataJson[i]);
+			            }
+                        //ListView lv = new ListView();
+                        ////lv.ItemsSource = BulkMatchList;
+                        //lv.ItemsSource = new[] { "a", "b", "c" };
+
+                        //var reviewPage = new ContentPage
+                        //{
+                        //    Content = lv
+                        //};
+                        //reviewPage.Title = "Personalized Reviews";
+                        //MessagingCenter.Send<App>(this, "Ready");
+                        //await _Instance._NavPage.Navigation.PushModalAsync(reviewPage);
+                        //RedirectToReviews(reviewPage);
+                    }
                 }
             }
         }

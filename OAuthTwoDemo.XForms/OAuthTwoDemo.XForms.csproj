@@ -31,6 +31,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="App.cs" />
+    <Compile Include="AppUser.cs" />
+    <Compile Include="BulkMatch.cs" />
     <Compile Include="Pages\ProfilePage.cs" />
     <Compile Include="Pages\BaseContentPage.cs" />
     <Compile Include="Pages\LoginPage.cs" />
